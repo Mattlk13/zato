@@ -110,7 +110,7 @@ python-tds==1.9.1
 python-editor==1.0.1
 python-glanceclient==0.12.0
 python-keyczar==0.71rc0
-python-keystoneclient==0.6.0
+python-keystoneclient==1.4.0
 python-ldap==3.2.0
 python-memcached==1.59
 python-novaclient==2.17.0
