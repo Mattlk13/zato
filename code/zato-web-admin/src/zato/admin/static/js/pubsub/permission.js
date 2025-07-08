@@ -1,8 +1,8 @@
 // /////////////////////////////////////////////////////////////////////////////
 
-$.fn.zato.data_table.PubSubClient = new Class({
+$.fn.zato.data_table.PubSubPermission = new Class({
     toString: function() {
-        var s = '<PubSubClient id:{0} name:{1} pattern:{2} access_type:{3}>';
+        var s = '<PubSubPermission id:{0} name:{1} pattern:{2} access_type:{3}>';
         return String.format(s, this.id ? this.id : '(none)',
                                 this.name ? this.name : '(none)',
                                 this.pattern ? this.pattern : '(none)',
@@ -191,7 +191,7 @@ function showTopicsAlert(pattern, event) {
                 contentHtml += '</div>';
             } else {
                 contentHtml += '<div class="topic-matches-header topic-matches-no-results">';
-                contentHtml += 'No matches found';
+                contentHtml += 'No matching topics found';
                 contentHtml += '</div>';
             }
 
@@ -313,7 +313,7 @@ function initializePatternEditing() {
         e.preventDefault();
         var $link = $(this);
         var currentValue = $link.data('value');
-        var clientId = $link.data('pk');
+        var permissionId = $link.data('pk');
         var prefix = $link.data('prefix');
         var original = $link.data('original');
 
@@ -350,10 +350,10 @@ function initializePatternEditing() {
 
             // Save via AJAX
             $.ajax({
-                url: '/zato/pubsub/client/update-pattern/',
+                url: '/zato/pubsub/permission/update-pattern/',
                 type: 'POST',
                 data: {
-                    pk: clientId,
+                    pk: permissionId,
                     name: 'pattern_value',
                     value: newValue,
                     prefix: prefix,
@@ -414,8 +414,8 @@ function initializePatternEditing() {
 $(document).ready(function() {
     $('#data-table').tablesorter();
     $.fn.zato.data_table.password_required = false;
-    $.fn.zato.data_table.class_ = $.fn.zato.data_table.PubSubClient;
-    $.fn.zato.data_table.new_row_func = $.fn.zato.pubsub.client.data_table.new_row;
+    $.fn.zato.data_table.class_ = $.fn.zato.data_table.PubSubPermission;
+    $.fn.zato.data_table.new_row_func = $.fn.zato.pubsub.permission.data_table.new_row;
     $.fn.zato.data_table.parse();
     $.fn.zato.data_table.setup_forms(['sec_base_id', 'access_type']);
 
@@ -453,12 +453,16 @@ $(document).ready(function() {
     };
 })
 
-$.fn.zato.pubsub.client.create = function() {
-    $.fn.zato.data_table._create_edit('create', 'Create a new API client', null);
+$.fn.zato.pubsub.permission = {};
+$.fn.zato.pubsub.permission.data_table = {};
+
+$.fn.zato.pubsub.permission.create = function() {
+    $.fn.zato.data_table._create_edit('create', 'Create a new permission', null);
 
     // Function to populate security definitions and initialize form
     function initializeCreateForm() {
-        populateSecurityDefinitions('create');
+        var selectId = '#id_sec_base_id';
+        $.fn.zato.common.security.populateSecurityDefinitions('create', null, '/zato/pubsub/permission/get-security-definitions/', selectId);
         updatePatternTypeOptions('create');
     }
 
@@ -488,7 +492,7 @@ $.fn.zato.pubsub.client.create = function() {
     };
 }
 
-$.fn.zato.pubsub.client.edit = function(id) {
+$.fn.zato.pubsub.permission.edit = function(id) {
 
     var instance = $.fn.zato.data_table.data[id];
 
@@ -500,7 +504,7 @@ $.fn.zato.pubsub.client.edit = function(id) {
         return;
     }
 
-    $.fn.zato.data_table._create_edit('edit', 'Update the API client', id);
+    $.fn.zato.data_table._create_edit('edit', 'Update permission `' + instance.name + '`', id);
 
     $.fn.zato.data_table.reset_form('edit');
     $('#edit-id').val(instance.id);
@@ -532,7 +536,8 @@ $.fn.zato.pubsub.client.edit = function(id) {
 
     // Function to populate security definitions and initialize form
     function initializeEditForm() {
-        populateSecurityDefinitions('edit', instance.sec_base_id);
+        var selectId = '#id_edit-sec_base_id';
+        $.fn.zato.common.security.populateSecurityDefinitions('edit', instance.sec_base_id, '/zato/pubsub/permission/get-security-definitions/', selectId);
         updatePatternTypeOptions('edit');
     }
 
@@ -654,7 +659,7 @@ $(document).on('click', '.pattern-remove-button', function() {
     }, 100);
 });
 
-$.fn.zato.pubsub.client.data_table.new_row = function(item, data, include_tr) {
+$.fn.zato.pubsub.permission.data_table.new_row = function(item, data, include_tr) {
 
     var row = '';
 
@@ -687,8 +692,8 @@ $.fn.zato.pubsub.client.data_table.new_row = function(item, data, include_tr) {
     row += String.format('<td>{0}</td>', pattern_display_html);
     row += String.format('<td style="text-align:center">{0}</td>', access_type_label);
     row += String.format('<td style="text-align:center">{0}</td>', item.subscription_count || '0');
-    row += String.format('<td><a href="javascript:$.fn.zato.pubsub.client.edit(\'{0}\')">Edit</a></td>', item.id);
-    row += String.format('<td><a href="javascript:$.fn.zato.pubsub.client.delete_(\'{0}\')">Delete</a></td>', item.id);
+    row += String.format('<td><a href="javascript:$.fn.zato.pubsub.permission.edit(\'{0}\')">Edit</a></td>', item.id);
+    row += String.format('<td><a href="javascript:$.fn.zato.pubsub.permission.delete_(\'{0}\')">Delete</a></td>', item.id);
     row += String.format('<td style="display:none">{0}</td>', item.id); // id (hidden)
     row += String.format('<td style="display:none">{0}</td>', item.pattern || ''); // _pattern (hidden)
     row += String.format('<td style="display:none">{0}</td>', item.access_type || ''); // _access_type (hidden)
@@ -701,10 +706,10 @@ $.fn.zato.pubsub.client.data_table.new_row = function(item, data, include_tr) {
     return row;
 }
 
-$.fn.zato.pubsub.client.delete_ = function(id) {
+$.fn.zato.pubsub.permission.delete_ = function(id) {
     $.fn.zato.data_table.delete_(id, 'td.item_id_',
-        'API client `{0}` deleted',
-        'Are you sure you want to delete API client `{0}`?',
+        'Permission `{0}` deleted',
+        'Are you sure you want to delete permission `{0}`?',
         true);
 }
 
@@ -846,104 +851,7 @@ function populatePatterns(formType, patternString) {
     updatePatternTypeOptions(formType);
 }
 
-function populateSecurityDefinitions(formType, selectedId) {
-    var selectId = formType === 'create' ? '#id_sec_base_id' : '#id_edit-sec_base_id';
-    var clusterId = $('#cluster_id').val();
-    var select = $(selectId);
-    var selectContainer = select.parent();
 
-    // Show spinner with smooth transition and minimum display time
-    var startTime = Date.now();
-
-    // Hide select and clear existing content (prevent overlay if form opened twice)
-    select.hide();
-    selectContainer.find('.no-security-definitions-message').remove();
-    selectContainer.find('.loading-spinner').remove();
-
-    // Add spinner
-    var spinner = $('<span class="loading-spinner" style="font-style: italic; color: #666;">Loading ..</span>');
-    selectContainer.append(spinner);
-
-    // Smooth fade-in for spinner
-    setTimeout(function() {
-        spinner.addClass('show');
-    }, 50);
-
-    $.ajax({
-        url: '/zato/pubsub/client/get-security-definitions/',
-        type: 'GET',
-        data: {
-            cluster_id: clusterId,
-            form_type: formType
-        },
-        success: function(response) {
-
-            // Re-declare variables for callback scope
-            var select = $(selectId);
-            var selectContainer = select.parent();
-            var spinner = selectContainer.find('.loading-spinner');
-
-            // Ensure minimum display time for smooth UX (prevent flicker)
-            var elapsedTime = Date.now() - startTime;
-            var minDisplayTime = 300; // 300ms minimum
-            var remainingTime = Math.max(0, minDisplayTime - elapsedTime);
-
-            setTimeout(function() {
-                // Fade out spinner
-                spinner.removeClass('show');
-
-                setTimeout(function() {
-                    // Remove spinner and clear any existing messages
-                    selectContainer.find('.loading-spinner').remove();
-                    selectContainer.find('.no-security-definitions-message').remove();
-                    select.empty();
-
-                    if (response.security_definitions && response.security_definitions.length > 0) {
-
-
-                        // Populate select with available security definitions
-                        $.each(response.security_definitions, function(index, item) {
-                            var option = $('<option></option>')
-                                .attr('value', item.id)
-                                .text(item.name);
-                            if (selectedId && item.id == selectedId) {
-                                option.attr('selected', 'selected');
-                            } else if (index === 0 && !selectedId) {
-                                option.attr('selected', 'selected');
-                            }
-                            select.append(option);
-                        });
-
-                        // Show the select dropdown with smooth transition
-                        select.show().removeClass('hide').addClass('security-select');
-
-                        // Enable OK button since we have security definitions
-                        var okButton = select.closest('form').find('input[type="submit"]');
-                        okButton.prop('disabled', false);
-                    } else {
-                        // No security definitions available - show appropriate message
-                        var hasExistingClients = $.fn.zato.data_table.data && Object.keys($.fn.zato.data_table.data).length > 0;
-                        var message = hasExistingClients ? 'No security definitions left' : 'No security definitions available';
-
-                        // Add message with link
-                        var messageElement = $('<span class="no-security-definitions-message" style="font-style: italic; color: #666;">' + message + ' - <a href="/zato/security/basic-auth/?cluster=1" target="_blank">Click to create one</a></span>');
-                        selectContainer.append(messageElement);
-
-                        // Disable OK button to prevent form submission
-                        var okButton = select.closest('form').find('input[type="submit"]');
-                        okButton.prop('disabled', true);
-                    }
-                }, 300); // Wait for fade-out transition
-            }, remainingTime);
-        },
-        error: function(xhr, status, error) {
-            // Remove spinner on error
-            var select = $(selectId);
-            var selectContainer = select.parent();
-            selectContainer.find('.loading-spinner').remove();
-        }
-    });
-}
 
 function updatePatternTypeOptions(formType) {
     var accessTypeId = formType === 'create' ? '#id_access_type' : '#id_edit-access_type';

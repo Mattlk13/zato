@@ -1342,33 +1342,6 @@ class PubSubTopic(Base):
 # ################################################################################################################################
 # ################################################################################################################################
 
-class PubSubSubscription(Base):
-    """ Represents a subscription of an API client to a topic.
-    """
-    __tablename__ = 'pubsub_subscription'
-    __table_args__ = (
-        UniqueConstraint('topic_id', 'sec_base_id', 'cluster_id'),
-        Index('pubsub_sub_key_idx', 'sub_key', unique=True),
-    )
-
-    id = Column(Integer, Sequence('pubsub_subscription_id_seq'), primary_key=True)
-    sub_key = Column(String(200), nullable=False)
-    is_active = Column(Boolean, nullable=False, default=True)
-    created = Column(DateTime, nullable=False, default=_utcnow)
-    last_updated = Column(DateTime, nullable=False, default=_utcnow, onupdate=_utcnow)
-
-    cluster_id = Column(Integer, ForeignKey('cluster.id', ondelete='CASCADE'), nullable=False)
-    cluster = relationship(Cluster, backref=backref('pubsub_subscriptions', order_by=id, cascade='all, delete, delete-orphan'))
-
-    topic_id = Column(Integer, ForeignKey('pubsub_topic.id', ondelete='CASCADE'), nullable=False)
-    topic = relationship('PubSubTopic', backref=backref('subscriptions', order_by=id, cascade='all, delete, delete-orphan'))
-
-    sec_base_id = Column(Integer, ForeignKey('sec_base.id', ondelete='CASCADE'), nullable=False)
-    sec_base = relationship('SecurityBase', backref=backref('pubsub_subscriptions', order_by=id, cascade='all, delete, delete-orphan'))
-
-# ################################################################################################################################
-# ################################################################################################################################
-
 class PubSubPermission(Base):
     """ Defines publication/subscription permissions for a security definition.
     """
@@ -1390,6 +1363,39 @@ class PubSubPermission(Base):
 
     sec_base_id = Column(Integer, ForeignKey('sec_base.id', ondelete='CASCADE'), nullable=False)
     sec_base = relationship('SecurityBase', backref=backref('pubsub_permissions', order_by=id, cascade='all, delete, delete-orphan'))
+
+# ################################################################################################################################
+# ################################################################################################################################
+
+class PubSubSubscription(Base):
+    """ Represents a subscription of an API client to a topic.
+    """
+    __tablename__ = 'pubsub_subscription'
+    __table_args__ = (
+        UniqueConstraint('topic_id', 'sec_base_id', 'cluster_id'),
+        Index('pubsub_sub_key_idx', 'sub_key', unique=True),
+    )
+
+    id = Column(Integer, Sequence('pubsub_subscription_id_seq'), primary_key=True)
+    sub_key = Column(String(200), nullable=False)
+    is_active = Column(Boolean, nullable=False, default=True)
+    created = Column(DateTime, nullable=False, default=_utcnow)
+    last_updated = Column(DateTime, nullable=False, default=_utcnow, onupdate=_utcnow)
+    pattern_matched = Column(String(400), nullable=False)
+
+    delivery_type = Column(String(20), nullable=False)
+
+    cluster_id = Column(Integer, ForeignKey('cluster.id', ondelete='CASCADE'), nullable=False)
+    cluster = relationship(Cluster, backref=backref('pubsub_subscriptions', order_by=id, cascade='all, delete, delete-orphan'))
+
+    topic_id = Column(Integer, ForeignKey('pubsub_topic.id', ondelete='CASCADE'), nullable=False)
+    topic = relationship('PubSubTopic', backref=backref('subscriptions', order_by=id, cascade='all, delete, delete-orphan'))
+
+    sec_base_id = Column(Integer, ForeignKey('sec_base.id', ondelete='CASCADE'), nullable=False)
+    sec_base = relationship('SecurityBase', backref=backref('pubsub_subscriptions', order_by=id, cascade='all, delete, delete-orphan'))
+
+    rest_push_endpoint_id = Column(Integer, ForeignKey('http_soap.id', ondelete='CASCADE'), nullable=False)
+    rest_push_endpoint = relationship('HTTPSOAP', backref=backref('pubsub_rest_push_endpoints', order_by=id, cascade='all, delete, delete-orphan'))
 
 # ################################################################################################################################
 # ################################################################################################################################

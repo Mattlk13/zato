@@ -40,6 +40,8 @@ from zato.admin.web.views.stats import user as stats_user
 from zato.admin.web.views.vendors import keysight_vision
 from zato.admin.web.views.pubsub import topic
 from zato.admin.web.views.pubsub import client
+from zato.admin.web.views.pubsub import permission
+from zato.admin.web.views.pubsub import subscription
 
 urlpatterns = [
 
@@ -729,6 +731,34 @@ urlpatterns += [
         login_required(client.GetSecurityDefinitions.as_view()), name=client.GetSecurityDefinitions.url_name),
     url(r'^zato/pubsub/client/delete/(?P<id>.*)/cluster/(?P<cluster_id>.*)/$',
         login_required(client.Delete()), name=client.Delete.url_name),
+
+    # PubSub Permissions
+
+    url(r'^zato/pubsub/permission/$',
+        login_required(permission.Index()), name=permission.Index.url_name),
+    url(r'^zato/pubsub/permission/create/$',
+        login_required(permission.Create()), name=permission.Create.url_name),
+    url(r'^zato/pubsub/permission/edit/$',
+        login_required(permission.Edit()), name=permission.Edit.url_name),
+    url(r'^zato/pubsub/permission/get-security-definitions/$',
+        login_required(permission.GetSecurityDefinitions.as_view()), name=permission.GetSecurityDefinitions.url_name),
+    url(r'^zato/pubsub/permission/delete/(?P<id>.*)/cluster/(?P<cluster_id>.*)/$',
+        login_required(permission.Delete()), name=permission.Delete.url_name),
+
+    # PubSub Subscriptions
+
+    url(r'^zato/pubsub/subscription/$',
+        login_required(subscription.Index()), name=subscription.Index.url_name),
+    url(r'^zato/pubsub/subscription/create/$',
+        login_required(subscription.Create()), name=subscription.Create.url_name),
+    url(r'^zato/pubsub/subscription/edit/$',
+        login_required(subscription.Edit()), name=subscription.Edit.url_name),
+    url(r'^zato/pubsub/subscription/delete/(?P<id>.*)/cluster/(?P<cluster_id>.*)/$',
+        login_required(subscription.Delete()), name=subscription.Delete.url_name),
+    url(r'^zato/pubsub/subscription/get-security-definitions/$',
+        login_required(subscription.get_security_definitions), name='pubsub-subscription-get-security-definitions'),
+    url(r'^zato/pubsub/subscription/get-topics/$',
+        login_required(subscription.get_topics), name='pubsub-subscription-get-topics'),
 ]
 
 # ################################################################################################################################

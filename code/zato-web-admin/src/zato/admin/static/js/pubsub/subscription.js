@@ -1,0 +1,85 @@
+// /////////////////////////////////////////////////////////////////////////////
+
+$.namespace('zato.pubsub.subscription');
+
+$.fn.zato.data_table.PubSubSubscription = new Class({
+    toString: function() {
+        var s = '<PubSubSubscription id:{0} sub_key:{1} topic_name:{2} sec_name:{3} pattern_matched:{4}>';
+        return String.format(s, this.id ? this.id : '(none)',
+                                this.sub_key ? this.sub_key : '(none)',
+                                this.topic_name ? this.topic_name : '(none)',
+                                this.sec_name ? this.sec_name : '(none)',
+                                this.pattern_matched ? this.pattern_matched : '(none)');
+    }
+});
+
+// /////////////////////////////////////////////////////////////////////////////
+
+$(document).ready(function() {
+    $('#data-table').tablesorter();
+    $.fn.zato.data_table.password_required = false;
+    $.fn.zato.data_table.class_ = $.fn.zato.data_table.PubSubSubscription;
+    $.fn.zato.data_table.new_row_func = $.fn.zato.pubsub.subscription.data_table.new_row;
+    $.fn.zato.data_table.parse();
+    $.fn.zato.data_table.setup_forms([]);
+})
+
+$.fn.zato.pubsub.subscription.data_table.new_row = function(item, data, include_tr) {
+    var row = '';
+
+    if(include_tr) {
+        row += String.format("<tr id='tr_{0}' class='updated'>", item.id);
+    }
+
+    var is_active = item.is_active == true
+    var delivery_type = item.delivery_type || 'N/A';
+
+    row += "<td class='numbering'>&nbsp;</td>";
+    row += "<td class='impexp'><input type='checkbox' /></td>";
+    row += String.format('<td>{0}</td>', item.sub_key);
+    row += String.format('<td style="text-align:center">{0}</td>', is_active ? 'Yes' : 'No');
+    row += String.format('<td>{0}</td>', item.sec_name);
+    row += String.format('<td>{0}</td>', item.topic_name);
+    row += String.format('<td>{0}</td>', delivery_type);
+    row += String.format('<td>{0}</td>', String.format("<a href='javascript:$.fn.zato.pubsub.subscription.edit({0});'>Edit</a>", item.id));
+    row += String.format('<td>{0}</td>', String.format("<a href='javascript:$.fn.zato.pubsub.subscription.delete_({0});'>Delete</a>", item.id));
+    row += String.format("<td class='ignore item_id_{0}'>{0}</td>", item.id);
+    row += String.format("<td class='ignore'>{0}</td>", is_active);
+
+    if(include_tr) {
+        row += '</tr>';
+    }
+
+    return row;
+}
+
+$.fn.zato.pubsub.subscription.create = function() {
+    $.fn.zato.data_table._create_edit('create', 'Create a new pub/sub subscription', null);
+    // Populate topics and security definitions after form opens
+    setTimeout(function() {
+        $.fn.zato.pubsub.common.populateTopics('create', null, '/zato/pubsub/subscription/get-topics/', '#id_topic_id');
+        $.fn.zato.common.security.populateSecurityDefinitions('create', null, '/zato/pubsub/subscription/get-security-definitions/', '#id_sec_base_id');
+    }, 100);
+}
+
+$.fn.zato.pubsub.subscription.edit = function(id) {
+    $.fn.zato.data_table.edit('edit', 'Update pub/sub subscription', id);
+    // Populate topics and security definitions after form opens with current selections
+    setTimeout(function() {
+        var currentTopicId = $('#id_edit-topic_id').val();
+        var currentSecId = $('#id_edit-sec_base_id').val();
+        $.fn.zato.pubsub.common.populateTopics('edit', currentTopicId, '/zato/pubsub/subscription/get-topics/', '#id_edit-topic_id');
+        $.fn.zato.common.security.populateSecurityDefinitions('edit', currentSecId, '/zato/pubsub/subscription/get-security-definitions/', '#id_edit-sec_base_id');
+    }, 100);
+}
+
+$.fn.zato.pubsub.subscription.delete_ = function(id) {
+
+    var instance = $.fn.zato.data_table.data[id];
+    var descriptor = 'Security: ' + instance.sec_name + '\nTopic: ' + instance.topic_name + '\nKey: ' + instance.sub_key + '\nDelivery: ' + (instance.delivery_type || 'N/A') + '\n\n';
+
+    $.fn.zato.data_table.delete_(id, 'td.item_id_',
+        'Pub/sub subscription deleted:\n' + descriptor,
+        'Are you sure you want to delete pub/sub subscription?\n\n' + descriptor,
+        true);
+}
