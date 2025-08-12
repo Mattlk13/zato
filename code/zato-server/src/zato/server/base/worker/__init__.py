@@ -868,6 +868,11 @@ class WorkerStore(_WorkerStoreBase):
 
             config = item['config']
 
+
+            print()
+            print(222, config)
+            print()
+
             topic_name = config['topic_name']
             sec_name = config['sec_name']
             sub_key = config['sub_key']

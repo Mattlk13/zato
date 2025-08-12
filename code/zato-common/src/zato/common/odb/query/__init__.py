@@ -935,32 +935,62 @@ def pubsub_permission_list(session, cluster_id, filter_by=None, needs_columns=Fa
 
 def _pubsub_subscription(session, cluster_id):
 
-    # Use distinct on subscription ID to avoid duplicates from topic joins
-    return session.query(
-        PubSubSubscription.id,
-        PubSubSubscription.sub_key,
-        PubSubSubscription.is_active,
-        PubSubSubscription.sec_base_id,
-        PubSubSubscription.created,
-        PubSubSubscription.last_updated,
-        PubSubSubscription.delivery_type,
-        PubSubSubscription.push_type,
-        PubSubSubscription.rest_push_endpoint_id,
-        PubSubSubscription.push_service_name,
-        PubSubTopic.name.label('topic_name'),
-        SecurityBase.name.label('sec_name'),
-        SecurityBase.username,
-        SecurityBase.password.label('password'),
-        HTTPSOAP.name.label('rest_push_endpoint_name') # type: ignore
-    ).\
-        distinct(PubSubSubscription.id).\
-        join(PubSubSubscriptionTopic, PubSubSubscription.id == PubSubSubscriptionTopic.subscription_id).\
-        join(PubSubTopic, PubSubSubscriptionTopic.topic_id == PubSubTopic.id).\
-        join(SecurityBase, PubSubSubscription.sec_base_id == SecurityBase.id).\
-        outerjoin(HTTPSOAP, PubSubSubscription.rest_push_endpoint_id == HTTPSOAP.id).\
-        filter(PubSubSubscription.cluster_id == cluster_id).\
-        filter(PubSubSubscriptionTopic.cluster_id == cluster_id).\
-        order_by(PubSubSubscription.id, PubSubTopic.name, SecurityBase.name)
+    # Single query to get subscriptions with their topic names aggregated
+    query = session.query(
+        PubSubSubscription,
+        PubSubTopic.name
+    ).outerjoin(
+        PubSubSubscriptionTopic, PubSubSubscription.id == PubSubSubscriptionTopic.subscription_id
+    ).outerjoin(
+        PubSubTopic, PubSubSubscriptionTopic.topic_id == PubSubTopic.id
+    ).filter(PubSubSubscription.cluster_id == cluster_id)
+
+    results = query.all()
+
+    # Group topics by subscription
+    subscription_topics = {}
+    for subscription, topic_name in results:
+        if subscription.sub_key not in subscription_topics:
+            subscription_topics[subscription.sub_key] = {
+                'subscription': subscription,
+                'topics': []
+            }
+        if topic_name:
+            subscription_topics[subscription.sub_key]['topics'].append(topic_name)
+
+    # Build final results with topic_name_list
+    final_results = []
+    for data in subscription_topics.values():
+        subscription = data['subscription']
+        topic_names = sorted(data['topics'])
+
+        # Get security and endpoint info
+        sec_base = session.query(SecurityBase).filter_by(id=subscription.sec_base_id).one()
+        rest_endpoint = None
+        if subscription.rest_push_endpoint_id:
+            rest_endpoint = session.query(HTTPSOAP).filter_by(id=subscription.rest_push_endpoint_id).one()
+
+        result = {
+            'id': subscription.id,
+            'sub_key': subscription.sub_key,
+            'is_active': subscription.is_active,
+            'sec_base_id': subscription.sec_base_id,
+            'created': subscription.created,
+            'last_updated': subscription.last_updated,
+            'delivery_type': subscription.delivery_type,
+            'push_type': subscription.push_type,
+            'rest_push_endpoint_id': subscription.rest_push_endpoint_id,
+            'push_service_name': subscription.push_service_name,
+            'topic_name_list': topic_names,
+            'sec_name': sec_base.name,
+            'username': sec_base.username,
+            'password': sec_base.password,
+            'rest_push_endpoint_name': rest_endpoint.name if rest_endpoint else None
+        }
+
+        final_results.append(result)
+
+    return final_results
 
 def pubsub_subscription(session, cluster_id, id):
     """ An individual Pub/Sub subscription.
@@ -973,18 +1003,16 @@ def pubsub_subscription(session, cluster_id, id):
 def pubsub_subscription_list(session, cluster_id, filter_by=None, needs_columns=False):
     """ A list of Pub/Sub subscriptions.
     """
-    query = _pubsub_subscription(session, cluster_id)
+    results = _pubsub_subscription(session, cluster_id)
 
-    # Apply any additional filtering if provided
+    # Apply filtering if provided
     if filter_by:
         if isinstance(filter_by, (list, tuple)):
             for filter_criterion in filter_by:
-                query = query.filter(filter_criterion)
+                results = [r for r in results if filter_criterion(r)]
         else:
-            query = query.filter(filter_by)
+            results = [r for r in results if filter_by(r)]
 
-    # Group by subscription ID to handle subscriptions with multiple topics
-    # This ensures we get one row per subscription with the first topic name
-    return query
+    return results
 
 # ################################################################################################################################
