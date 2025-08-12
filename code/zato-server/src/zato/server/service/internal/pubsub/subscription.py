@@ -67,52 +67,25 @@ class GetList(AdminService):
         # Check if password should be included in the response
         needs_password = self.request.input.needs_password
 
-        # Query always returns password now, but we only need to use it if requested
+        # Query returns subscriptions with topic_name_list already populated
         result = self._search(pubsub_subscription_list, session, self.request.input.cluster_id, None, False)
-
-        # Group by subscription ID
-        subscriptions_by_id = {}
-        topic_names_by_id = {}
-
-        for item in result:
-
-            sub_id = item.id
-            topic_name = item.topic_name
-            password = item.password
-
-            if sub_id not in subscriptions_by_id:
-
-                item_dict = item._asdict()
-
-                # Include password in response only if requested
-                if needs_password:
-                    password = self.crypto.decrypt(password)
-                    item_dict['password'] = password
-
-                subscriptions_by_id[sub_id] = item_dict
-
-                # Initialize topic names list for this subscription
-                topic_names_by_id[sub_id] = []
-
-            # Store plain topic name if not already present
-            if topic_name not in topic_names_by_id[sub_id]:
-                topic_names_by_id[sub_id].append(topic_name)
 
         # Process data for each subscription
         data = []
-        for sub_id, sub_dict in subscriptions_by_id.items():
+        for item in result:
 
-            # Sort topic names
-            sorted_topic_names = sorted(topic_names_by_id[sub_id])
+            # Include password in response only if requested
+            if needs_password:
+                password = self.crypto.decrypt(item['password'])
+                item['password'] = password
 
             # Create topic links
-            topic_link_list = [get_topic_link(name) for name in sorted_topic_names]
+            topic_link_list = [get_topic_link(name) for name in item['topic_name_list']]
 
-            # Store both fields
-            sub_dict['topic_link_list'] = ', '.join(topic_link_list)
-            sub_dict['topic_name_list'] = sorted_topic_names
+            # Store topic links
+            item['topic_link_list'] = ', '.join(topic_link_list)
 
-            data.append(sub_dict)
+            data.append(item)
 
         return elems_with_opaque(data)
 
